@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mapbox and Turf.js Spatial Analysis</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .sidebar {
+            position: absolute;
+            width: 25%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background-color: white;
+            padding: 10px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="sidebar" id="sidebar">
+        <h2>Spatial Analysis</h2>
+        <button onclick="measureDistance()">Measure Distance</button><br><br>
+        <button onclick="nearestNeighbor()">Nearest Neighbor</button><br><br>
+        <button onclick="createBuffer()">Create Buffer</button>
+    </div>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf/turf.min.js"></script>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYmVydHliZXJ0eTEyMyIsImEiOiJjbHljZmY3eDIxbjl2MmlvbWVvYTBvcXZiIn0.mI6pI_PqDEIcWn7rvCXF_w';
+        
+        // Initialize the map
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [0, 0],
+            zoom: 2
+        });
+        
+        // Add navigation controls
+        map.addControl(new mapboxgl.NavigationControl());
+        
+        var markers = [];
+
+        // Function to measure distance between two points
+        function measureDistance() {
+            if (markers.length < 2) {
+                alert('Add at least two markers to measure distance.');
+                return;
+            }
+            var from = turf.point(markers[0].getLngLat().toArray());
+            var to = turf.point(markers[1].getLngLat().toArray());
+            var options = {units: 'kilometers'};
+            var distance = turf.distance(from, to, options);
+            alert('Distance: ' + distance.toFixed(2) + ' km');
+        }
+
+        // Function to find the nearest neighbor
+        function nearestNeighbor() {
+            if (markers.length < 2) {
+                alert('Add at least two markers to find nearest neighbor.');
+                return;
+            }
+            var from = turf.point(markers[0].getLngLat().toArray());
+            var points = markers.slice(1).map(marker => turf.point(marker.getLngLat().toArray()));
+            var nearest = turf.nearestPoint(from, turf.featureCollection(points));
+            alert('Nearest neighbor coordinates: ' + nearest.geometry.coordinates);
+        }
+
+        // Function to create a buffer around a point
+        function createBuffer() {
+            if (markers.length < 1) {
+                alert('Add at least one marker to create a buffer.');
+                return;
+            }
+            var point = turf.point(markers[0].getLngLat().toArray());
+            var buffer = turf.buffer(point, 10, {units: 'kilometers'});
+            map.addLayer({
+                'id': 'buffer',
+                'type': 'fill',
+                'source': {
+                    'type': 'geojson',
+                    'data': buffer
+                },
+                'layout': {},
+                'paint': {
+                    'fill-color': '#888',
+                    'fill-opacity': 0.4
+                }
+            });
+        }
+
+        // Add click event to add markers
+        map.on('click', function(e) {
+            var marker = new mapboxgl.Marker({ draggable: true })
+                .setLngLat(e.lngLat)
+                .addTo(map);
+            markers.push(marker);
+        });
+    </script>
+</body>
+</html>
