@@ -5,6 +5,7 @@
     <title>Mapbox and Turf.js Spatial Analysis</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl-draw/1.2.0/mapbox-gl-draw.css" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -50,6 +51,18 @@
         .sidebar button:hover {
             background-color: #0056b3;
         }
+        .info {
+            background: white;
+            border-radius: 3px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            font-size: 14px;
+            width: 250px;
+            display: none;
+        }
+        .info h4 {
+            margin: 0 0 10px;
+        }
     </style>
 </head>
 <body>
@@ -59,9 +72,14 @@
         <button onclick="measureDistance()">Measure Distance</button>
         <button onclick="nearestNeighbor()">Nearest Neighbor</button>
         <button onclick="createBuffer()">Create Buffer</button>
+        <button onclick="clearMap()">Clear Map</button>
+        <h2>Draw Tools</h2>
+        <button onclick="drawTools()">Toggle Draw Tools</button>
     </div>
+    <div id="info" class="info"></div>
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf/turf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl-draw/1.2.0/mapbox-gl-draw.js"></script>
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoiYmVydHliZXJ0eTEyMyIsImEiOiJjbHljZmY3eDIxbjl2MmlvbWVvYTBvcXZiIn0.mI6pI_PqDEIcWn7rvCXF_w';
         
@@ -76,6 +94,16 @@
         // Add navigation controls
         map.addControl(new mapboxgl.NavigationControl());
         
+        // Initialize the draw control
+        var draw = new MapboxDraw({
+            displayControlsDefault: false,
+            controls: {
+                polygon: true,
+                line_string: true,
+                trash: true
+            }
+        });
+
         var markers = [];
 
         // Function to measure distance between two points
@@ -126,6 +154,27 @@
             });
         }
 
+        // Function to clear all markers and layers from the map
+        function clearMap() {
+            markers.forEach(marker => marker.remove());
+            markers = [];
+            var layers = map.getStyle().layers;
+            for (var i = 0; i < layers.length; i++) {
+                if (layers[i].id === 'buffer') {
+                    map.removeLayer('buffer').removeSource('buffer');
+                }
+            }
+        }
+
+        // Function to toggle draw tools
+        function drawTools() {
+            if (map.hasControl(draw)) {
+                map.removeControl(draw);
+            } else {
+                map.addControl(draw);
+            }
+        }
+
         // Add click event to add markers
         map.on('click', function(e) {
             var marker = new mapboxgl.Marker({ draggable: true })
@@ -133,6 +182,23 @@
                 .addTo(map);
             markers.push(marker);
         });
+
+        // Add event to show information about the drawn features
+        map.on('draw.create', updateInfo);
+        map.on('draw.update', updateInfo);
+        map.on('draw.delete', updateInfo);
+
+        function updateInfo(e) {
+            var data = draw.getAll();
+            var info = document.getElementById('info');
+            if (data.features.length) {
+                info.innerHTML = JSON.stringify(data, null, 2);
+                info.style.display = 'block';
+            } else {
+                info.innerHTML = '';
+                info.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>
